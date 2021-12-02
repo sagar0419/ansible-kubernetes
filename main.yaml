@@ -1,0 +1,3 @@
+---
+- include: single_node.yaml
+- include: ha.yaml

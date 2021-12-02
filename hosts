@@ -1,0 +1,8 @@
+[master]
+master ansible_host=139.59.81.192  new_hostname=kubernetes-master
+
+[workers]
+worker1 ansible_host=165.22.216.118  new_hostname=node1
+
+[Client]
+126.132.11.19

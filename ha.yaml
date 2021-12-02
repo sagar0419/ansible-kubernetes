@@ -1,0 +1,66 @@
+---
+- hosts: "master"
+  gather_facts: yes
+  tasks:
+   - name: copy haproxy file to remote server
+     copy:
+       src: ./haproxy.cfg
+       dest: /tmp/
+
+   - name: install haproxy
+     apt:
+       name:
+         - haproxy
+         - jq
+       state: present
+
+   - name:  haproxy conf
+     shell: cat /tmp/haproxy.cfg >> /etc/haproxy/haproxy.cfg
+
+
+   - name: Installing Ingress controller
+     command: kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.1.0/deploy/static/provider/baremetal/deploy.yaml
+
+   - pause: seconds=15
+
+   - name: Ingress port https
+     shell: kubectl get -n ingress-nginx svc -o json | jq -r '.items[] | (.spec.ports[].nodePort ) ' |  awk {'print  $1'} | awk 'NR==2 {print $1}'
+     register: https
+
+   - debug:
+       msg: "{{ https.stdout }}"
+
+   - name: update conf
+     shell: sed -i 's/two/{{ https.stdout }}/g' /etc/haproxy/haproxy.cfg
+       
+
+   - name: Ingress controller http
+     shell: kubectl get -n ingress-nginx svc -o json | jq -r '.items[] | (.spec.ports[].nodePort ) ' |  awk {'print  $1'} | awk 'NR==1 {print $1}'
+     register: http
+   - debug:
+       msg: "{{ http.stdout }}"
+
+   - name: Moving Ingress conf
+     copy:
+       src: ./ingress.yaml
+       dest: /tmp/
+
+   - pause: seconds=5       
+
+   - name: Creating Ingress conf
+     command: kubectl apply -f ingress.yaml
+     args:
+       chdir: /tmp/
+
+
+   - pause: seconds=15
+
+   - name: update conf
+     shell: sed -i 's/one/{{ http.stdout }}/g' /etc/haproxy/haproxy.cfg
+
+   - name: enable haproxy
+     shell: systemctl enable haproxy
+
+   - name: start haproxy
+     shell: systemctl restart haproxy
+

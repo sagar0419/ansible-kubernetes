@@ -1,0 +1,24 @@
+rbac:
+  create: true
+
+serviceAccount:
+  create: true
+
+controller:
+  # Make sure to use the RollingUpdate update strategy
+  updateStrategy:
+    type: RollingUpdate
+  # Deploy the ingress controller to the master node, using the host network
+  # This means that we can expose the cluster just by exposing the master node
+  hostNetwork: true
+  service:
+    type: ClusterIP
+  tolerations:
+    - key: node-role.kubernetes.io/master
+      operator: Exists
+      effect: NoSchedule
+  nodeSelector:
+    "node-role.kubernetes.io/master": ""
+  # Enable SSL passthrough so that application can use it if they wish
+  extraArgs:
+    "enable-ssl-passthrough": ""

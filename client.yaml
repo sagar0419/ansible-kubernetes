@@ -1,0 +1,63 @@
+---
+- hosts: client
+
+  tasks:
+
+    - name: updating apt
+      apt: name=aptitude state=latest update_cache=yes force_apt_get=yes
+
+    - name: Installing the required system packages
+      apt: name={{ item }} state=latest update_cache=yes
+      loop: [ 'apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common', 'python3-pip', 'virtualenv', 'python3-setuptools']
+
+    - name: Adding Docker GPG  Key on server
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Adding Docker Repository on server
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu focal stable
+        state: present
+
+    - name: Updating machine and installing docker
+      apt: update_cache=yes name=docker-ce state=latest
+
+    - name: Installing Docker python module
+      pip:
+        name: docker
+
+    - name: creating a openvpn container
+      raw: docker run -d \
+           --name=openvpn-as \
+           --cap-add=NET_ADMIN \
+           -e PUID=1000 \
+           -e PGID=1000 \
+           -e TZ=Europe/London \
+           -e INTERFACE=eth0 \
+           -p 943:943 \
+           -p 9443:9443 \
+           -p 1194:1194/udp \
+           -v /etc/openvpn:/config \
+           --restart unless-stopped \
+             ghcr.io/linuxserver/openvpn-as
+
+    - name: creating an wireguard container
+      raw: docker run -d \
+           --name=wireguard \
+           --cap-add=NET_ADMIN \
+           --cap-add=SYS_MODULE \
+           -e PUID=1000 \
+           -e PGID=1000 \
+           -e TZ=Europe/London \
+           -e SERVERPORT=51820  \
+           -e PEERS=1  \
+           -e PEERDNS=auto \
+           -e INTERNAL_SUBNET=172.17.0.0 \
+           -e ALLOWEDIPS=0.0.0.0/0  \
+           -p 51820:51820/udp \
+           -v /opt/wireguard-server/config:/config \
+           -v /lib/modules:/lib/modules \
+           --sysctl="net.ipv4.conf.all.src_valid_mark=1" \
+           --restart unless-stopped \
+             linuxserver/wireguard
