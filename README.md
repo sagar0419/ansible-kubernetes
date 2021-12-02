@@ -16,6 +16,10 @@
 #command to run ansible playbook with default /etc/ansible/hosts file
 * ansible-playbook  single_node.yaml
 
+#Once the deployment is done than run below command to create ingress and haproxy
+
+* ansible-playbook haproxy.yaml 
+
 ==========================================================================
 # jenkins and grafana.
 ========================
